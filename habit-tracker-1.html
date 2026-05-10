@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Habit">
+<meta name="theme-color" content="#0a0f0c">
+<title>Habit Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Black+Han+Sans&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #0a0f0c;
+    --accent: #2dff7a;
+    --dim: #141f18;
+    --text: #2dff7a;
+    --bad: #ff3a3a;
+  }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    transition: background 0.6s ease;
+    overscroll-behavior: none;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: env(safe-area-inset-top, 20px) 1.25rem env(safe-area-inset-bottom, 20px);
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
+
+  /* TICKER */
+  .ticker-wrap { width: 100%; overflow: hidden; border-bottom: 1px solid rgba(45,255,122,0.15); padding-bottom: 0.5rem; margin-bottom: 1.75rem; }
+  .ticker { display: inline-block; white-space: nowrap; animation: tick 14s linear infinite; color: rgba(45,255,122,0.35); font-size: 0.6rem; letter-spacing: 0.15em; }
+  @keyframes tick { from { transform: translateX(100vw); } to { transform: translateX(-100%); } }
+
+  /* STATUS */
+  .status-badge {
+    border: 2px solid var(--accent);
+    padding: 0.3rem 1.4rem;
+    border-radius: 2px;
+    background: rgba(45,255,122,0.07);
+    margin-bottom: 0.4rem;
+    transition: border-color 0.5s, background 0.5s;
+  }
+  .status-badge span { font-family: 'Black Han Sans', sans-serif; font-size: 0.75rem; letter-spacing: 0.2em; }
+  .status-sub { font-size: 0.6rem; letter-spacing: 0.15em; opacity: 0.55; margin-bottom: 2rem; }
+
+  /* BIG NUMBER */
+  .big-num { font-family: 'Black Han Sans', sans-serif; font-size: min(22vw, 6.5rem); line-height: 1; transition: color 0.5s; }
+  .big-label { font-size: 0.6rem; letter-spacing: 0.2em; opacity: 0.5; margin-top: 0.2rem; margin-bottom: 2rem; text-align: center; }
+
+  /* WEEK PILLS */
+  .week-row { display: flex; gap: 0.35rem; margin-bottom: 2rem; }
+  .day-pill { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+  .day-circle {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Black Han Sans', sans-serif; font-size: 0.9rem;
+    border: 2px solid transparent;
+    transition: background 0.35s, border-color 0.35s;
+  }
+  .day-label { font-size: 0.5rem; letter-spacing: 0.1em; opacity: 0.4; }
+
+  /* BUTTONS */
+  .btn-log {
+    background: var(--accent); color: #000; border: none;
+    font-family: 'Black Han Sans', sans-serif; font-size: 1.1rem; letter-spacing: 0.08em;
+    padding: 1rem 3rem; cursor: pointer; border-radius: 4px;
+    box-shadow: 0 0 35px rgba(45,255,122,0.3);
+    transition: transform 0.1s, box-shadow 0.3s, background 0.5s;
+    -webkit-appearance: none;
+  }
+  .btn-log:active { transform: scale(0.95); }
+  .btn-undo {
+    background: transparent; color: rgba(45,255,122,0.45); border: 1px solid rgba(45,255,122,0.2);
+    font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 0.12em;
+    padding: 0.45rem 1.2rem; cursor: pointer; border-radius: 3px;
+    transition: color 0.2s, border-color 0.2s; -webkit-appearance: none;
+  }
+  .btn-undo:active { color: var(--accent); border-color: var(--accent); }
+  .btn-confirm { background: #ff3a3a; color: #fff; border: none; font-family: 'Black Han Sans', sans-serif; font-size: 0.95rem; padding: 0.9rem 2rem; cursor: pointer; border-radius: 4px; -webkit-appearance: none; }
+  .btn-cancel {
+    background: transparent; color: rgba(45,255,122,0.45); border: 1px solid rgba(45,255,122,0.2);
+    font-family: 'DM Mono', monospace; font-size: 0.75rem; padding: 0.9rem 2rem; cursor: pointer; border-radius: 4px; -webkit-appearance: none;
+  }
+  .btn-area { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+  .confirm-row { display: flex; gap: 0.75rem; }
+  .confirm-label { font-size: 0.65rem; letter-spacing: 0.12em; opacity: 0.6; margin-bottom: 0.25rem; text-align: center; }
+
+  /* TODAY COUNT */
+  .today-count { font-size: 0.6rem; letter-spacing: 0.15em; opacity: 0.45; margin-bottom: 2.5rem; }
+
+  /* RULES */
+  .rules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; width: 100%; max-width: 360px; border-top: 1px solid rgba(45,255,122,0.12); padding-top: 1.5rem; margin-bottom: 2rem; }
+  .rule-card { background: var(--dim); border-radius: 4px; padding: 0.75rem 1rem; border: 1px solid rgba(45,255,122,0.15); transition: border-color 0.4s; }
+  .rule-text { font-size: 0.65rem; letter-spacing: 0.08em; }
+
+  /* STREAK */
+  .streak-wrap { text-align: center; margin-bottom: 2rem; }
+  .streak-label { font-size: 0.55rem; letter-spacing: 0.2em; opacity: 0.45; margin-bottom: 0.2rem; }
+  .streak-num { font-family: 'Black Han Sans', sans-serif; font-size: 2.8rem; }
+
+  /* 30-DAY GRID */
+  .grid-label { font-size: 0.55rem; letter-spacing: 0.2em; opacity: 0.4; margin-bottom: 0.6rem; width: 100%; max-width: 360px; }
+  .dot-grid { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; max-width: 360px; margin-bottom: 2rem; }
+  .dot { width: 10px; height: 10px; border-radius: 2px; transition: background 0.4s; }
+
+  /* PULSE ANIM */
+  @keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.07)} 100%{transform:scale(1)} }
+  .pulse { animation: pulse 0.45s ease; }
+
+  /* INSTALL HINT */
+  .install-hint {
+    font-size: 0.55rem; letter-spacing: 0.1em; opacity: 0.3;
+    text-align: center; margin-top: 1rem; line-height: 1.8;
+    width: 100%; max-width: 360px;
+    border-top: 1px solid rgba(45,255,122,0.08); padding-top: 1rem;
+  }
+</style>
+</head>
+<body>
+
+<div class="ticker-wrap">
+  <span class="ticker">HABIT TRACKER — SOBRİETE: ≤2×/HAFTA · ≤1×/GÜN — HABIT TRACKER — SOBRİETE: ≤2×/HAFTA · ≤1×/GÜN —&nbsp;</span>
+</div>
+
+<div class="status-badge"><span id="statusLabel">CLEAN</span></div>
+<div class="status-sub" id="statusSub">0/2 bu hafta</div>
+
+<div class="big-num" id="bigNum">0</div>
+<div class="big-label">BU HAFTA</div>
+
+<div class="week-row" id="weekRow"></div>
+
+<div class="btn-area" id="btnArea">
+  <button class="btn-log" id="logBtn" onclick="askConfirm()">+ KAYDET</button>
+</div>
+<div class="today-count" id="todayCount">BUGÜN: 0×</div>
+
+<div class="rules-grid">
+  <div class="rule-card" id="rule1"><span class="rule-text">✓ ≤ 2×/hafta</span></div>
+  <div class="rule-card" id="rule2"><span class="rule-text">✓ ≤ 1×/gün</span></div>
+</div>
+
+<div class="streak-wrap">
+  <div class="streak-label">TEMİZ HAFTA SERİSİ</div>
+  <div class="streak-num" id="streakNum">0</div>
+</div>
+
+<div class="grid-label">SON 30 GÜN</div>
+<div class="dot-grid" id="dotGrid"></div>
+
+<div class="install-hint" id="installHint"></div>
+
+<script>
+const STORAGE_KEY = 'habit-tracker-v2';
+
+function getDayKey(d) {
+  return d.toISOString().split('T')[0];
+}
+function getWeekStart(d) {
+  const dd = new Date(d);
+  dd.setHours(0,0,0,0);
+  const day = dd.getDay();
+  const diff = dd.getDate() - day + (day === 0 ? -6 : 1);
+  dd.setDate(diff);
+  return getDayKey(dd);
+}
+
+const COLORS = {
+  clean:   { bg:'#0a0f0c', accent:'#2dff7a', dim:'#141f18' },
+  ok:      { bg:'#110f04', accent:'#ffd84d', dim:'#221c08' },
+  warning: { bg:'#110800', accent:'#ff8c2d', dim:'#221008' },
+  bad:     { bg:'#110303', accent:'#ff3a3a', dim:'#220808' },
+};
+
+let log = {};
+let confirming = false;
+
+function load() {
+  try { log = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { log = {}; }
+}
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(log));
+}
+
+function todayKey() { return getDayKey(new Date()); }
+function weekDays() {
+  const ws = getWeekStart(new Date());
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(ws);
+    d.setDate(d.getDate() + i);
+    days.push(getDayKey(d));
+  }
+  return days;
+}
+
+function weekCount() {
+  return weekDays().reduce((a, dk) => a + (log[dk] || 0), 0);
+}
+function todayCount() { return log[todayKey()] || 0; }
+
+function getStatus() {
+  const wc = weekCount(), tc = todayCount();
+  if (tc >= 2) return { level:'bad', label:'RELAPSE', sub:`Bugün 2× — kural ihlali` };
+  if (wc > 2)  return { level:'bad', label:'RELAPSE', sub:`${wc}× bu hafta — limit aşıldı` };
+  if (wc === 2) return { level:'warning', label:'SINIRADA', sub:'2/2 bu hafta — dikkat' };
+  if (wc === 1) return { level:'ok', label:'TUTUYOR', sub:'1/2 bu hafta' };
+  return { level:'clean', label:'TEMİZ', sub:'0/2 bu hafta' };
+}
+
+function computeStreak() {
+  // Only count fully-passed weeks (not the current week)
+  // A week counts toward streak only if it had at least some history OR we explicitly track it
+  // Start from LAST week, go backwards
+  let s = 0;
+  const d = new Date();
+  d.setDate(d.getDate() - 7); // start from last week
+
+  for (let w = 0; w < 52; w++) {
+    const ws = getWeekStart(d);
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const dd = new Date(ws);
+      dd.setDate(dd.getDate() + i);
+      days.push(getDayKey(dd));
+    }
+    const wc = days.reduce((a, dk) => a + (log[dk] || 0), 0);
+    const anyDouble = days.some(dk => (log[dk] || 0) >= 2);
+
+    // If this week has any logged entries, check if it was clean
+    // If no entries at all for this week, stop counting (no data = unknown)
+    const hasAnyEntry = days.some(dk => (log[dk] || 0) > 0);
+    if (!hasAnyEntry) break;
+    if (wc > 2 || anyDouble) break;
+    s++;
+    d.setDate(d.getDate() - 7);
+  }
+  return s;
+}
+
+function applyTheme(level) {
+  const c = COLORS[level];
+  document.documentElement.style.setProperty('--bg', c.bg);
+  document.documentElement.style.setProperty('--accent', c.accent);
+  document.documentElement.style.setProperty('--dim', c.dim);
+  document.documentElement.style.setProperty('--bad', '#ff3a3a');
+  document.querySelector('meta[name=theme-color]').setAttribute('content', c.bg);
+}
+
+function render() {
+  const st = getStatus();
+  applyTheme(st.level);
+
+  document.getElementById('statusLabel').textContent = st.label;
+  document.getElementById('statusSub').textContent = st.sub;
+  document.getElementById('bigNum').textContent = weekCount();
+  document.getElementById('todayCount').textContent = `BUGÜN: ${todayCount()}× ${todayCount() >= 2 ? '⚠' : ''}`;
+  document.getElementById('streakNum').textContent = computeStreak();
+
+  // Rules
+  const wc = weekCount(), tc = todayCount();
+  const r1 = document.getElementById('rule1');
+  const r2 = document.getElementById('rule2');
+  r1.querySelector('.rule-text').textContent = (wc <= 2 ? '✓' : '✗') + ' ≤ 2×/hafta';
+  r1.style.borderColor = wc <= 2 ? 'rgba(45,255,122,0.2)' : 'rgba(255,58,58,0.4)';
+  r1.querySelector('.rule-text').style.color = wc <= 2 ? 'var(--accent)' : '#ff3a3a';
+  r2.querySelector('.rule-text').textContent = (tc < 2 ? '✓' : '✗') + ' ≤ 1×/gün';
+  r2.style.borderColor = tc < 2 ? 'rgba(45,255,122,0.2)' : 'rgba(255,58,58,0.4)';
+  r2.querySelector('.rule-text').style.color = tc < 2 ? 'var(--accent)' : '#ff3a3a';
+
+  // Week pills
+  const days = weekDays();
+  const labels = ['P','S','Ç','P','C','C','P'];
+  const row = document.getElementById('weekRow');
+  row.innerHTML = '';
+  days.forEach((dk, i) => {
+    const cnt = log[dk] || 0;
+    const isToday = dk === todayKey();
+    const bad = cnt >= 2;
+    const filled = cnt > 0;
+    const accentColor = COLORS[st.level].accent;
+    const bgColor = bad ? '#ff3a3a' : filled ? accentColor : COLORS[st.level].dim;
+    const textColor = filled ? '#000' : `${accentColor}55`;
+    const borderColor = isToday ? accentColor : 'transparent';
+    const pill = document.createElement('div');
+    pill.className = 'day-pill';
+    pill.innerHTML = `
+      <div class="day-circle" style="background:${bgColor};border-color:${borderColor};color:${textColor};">
+        ${cnt || ''}
+      </div>
+      <span class="day-label">${labels[i]}</span>`;
+    row.appendChild(pill);
+  });
+
+  // 30 day dots
+  const grid = document.getElementById('dotGrid');
+  grid.innerHTML = '';
+  const accentColor = COLORS[st.level].accent;
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dk = getDayKey(d);
+    const cnt = log[dk] || 0;
+    const isToday = dk === todayKey();
+    const bad = cnt >= 2;
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.style.background = bad ? '#ff3a3a' : cnt > 0 ? accentColor : COLORS[st.level].dim;
+    dot.style.opacity = cnt === 0 ? '0.45' : '1';
+    dot.style.outline = isToday ? `2px solid ${accentColor}` : 'none';
+    dot.style.outlineOffset = '1px';
+    dot.title = `${dk}: ${cnt}×`;
+    grid.appendChild(dot);
+  }
+
+  // Btn area
+  renderBtnArea();
+
+  // Install hint
+  renderInstallHint();
+}
+
+function renderBtnArea() {
+  const area = document.getElementById('btnArea');
+  const tc = todayCount();
+  if (confirming) {
+    area.innerHTML = `
+      <div class="confirm-label">EMİN MİSİN?</div>
+      <div class="confirm-row">
+        <button class="btn-confirm" onclick="doLog()">EVET, KAYDET</button>
+        <button class="btn-cancel" onclick="cancelConfirm()">İPTAL</button>
+      </div>`;
+  } else {
+    let html = `<button class="btn-log" id="logBtn" onclick="askConfirm()">+ KAYDET</button>`;
+    if (tc > 0) html += `<button class="btn-undo" onclick="undo()">↩ GERİ AL</button>`;
+    area.innerHTML = html;
+  }
+}
+
+function askConfirm() {
+  confirming = true;
+  renderBtnArea();
+}
+function cancelConfirm() {
+  confirming = false;
+  renderBtnArea();
+}
+function doLog() {
+  confirming = false;
+  const tk = todayKey();
+  log[tk] = (log[tk] || 0) + 1;
+  save();
+  render();
+  // pulse big num
+  const bn = document.getElementById('bigNum');
+  bn.classList.remove('pulse');
+  void bn.offsetWidth;
+  bn.classList.add('pulse');
+  setTimeout(() => bn.classList.remove('pulse'), 500);
+}
+function undo() {
+  const tk = todayKey();
+  if (log[tk] > 0) {
+    log[tk]--;
+    if (log[tk] === 0) delete log[tk];
+    save();
+    render();
+  }
+}
+
+function renderInstallHint() {
+  const hint = document.getElementById('installHint');
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua);
+  const isAndroid = /Android/.test(ua);
+  if (isIOS) {
+    hint.textContent = '📲 Ana ekrana eklemek için: Safari\'de Paylaş → Ana Ekrana Ekle';
+  } else if (isAndroid) {
+    hint.textContent = '📲 Ana ekrana eklemek için: Chrome\'da ⋮ → Ana Ekrana Ekle';
+  } else {
+    hint.textContent = '💻 Telefonda aç ve ana ekrana ekle — uygulama gibi çalışır';
+  }
+}
+
+// Init
+load();
+render();
+</script>
+</body>
+</html>
